@@ -7,7 +7,7 @@ Supports **PostgreSQL** and **MySQL** via `DATABASE_URL`.
 ## Railway setup
 
 1. Create a **new service** from this repo (GitHub or `railway up`).
-2. Open the service → **Settings** → enable **Cron Schedule** (or use `cronSchedule` in `railway.toml`). Default: `0 2 * * *` (02:00 UTC daily).
+2. Open the service → **Settings** → set **Cron Schedule** (e.g. `0 2 * * *` for 02:00 UTC daily) and **Restart Policy** to **Never** (the job should exit when the backup finishes).
 3. Set **variables** (see below). If the DB lives on Railway, use **Add variable reference** from your Postgres/MySQL service for `DATABASE_URL`.
 4. Deploy. Each cron tick runs the container once; logs show success or errors.
 
@@ -49,4 +49,4 @@ gunzip -c backup.sql.gz | psql "$DATABASE_URL"
 
 ## Cron time
 
-Edit `cronSchedule` in `railway.toml` or the Railway dashboard. Uses standard cron (UTC). Example: `0 3 * * *` = 03:00 UTC every day.
+Set **Cron Schedule** in the Railway dashboard (Settings). Uses standard cron (UTC). Example: `0 3 * * *` = 03:00 UTC every day.

@@ -1,8 +1,0 @@
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
-
-[deploy]
-# Daily at 02:00 UTC — change in Railway dashboard if you prefer local time
-cronSchedule = "0 2 * * *"
-restartPolicyType = "NEVER"
