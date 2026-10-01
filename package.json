@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "backup": "node src/backup.js",
+    "build": "node -e \"process.exit(0)\"",
     "start": "node src/backup.js"
   },
   "dependencies": {
