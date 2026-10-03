@@ -56,11 +56,64 @@ npm run backup
 
 Requires `pg_dump` or `mysqldump` on your PATH (included in the Docker image on Railway).
 
-## Restore (PostgreSQL example)
+## Disaster recovery (PostgreSQL on Railway)
+
+Use this runbook when the database must be rebuilt from an R2 backup—for example corruption, a bad migration, or a new Postgres service.
+
+### Where backups live
+
+Scheduled runs upload objects to your R2 bucket under **`BACKUP_PREFIX`** (default: `db-backups/`). PostgreSQL files are named like:
+
+`postgres-YYYYMMDD_HHMMSSZ.sql.gz`
+
+Pick the newest object you need (remember retention: default **14 days**). Download it from the Cloudflare R2 dashboard or with any S3-compatible client.
+
+### Prerequisites
+
+- **`psql`** and **`gunzip`** on the machine running the restore.
+- **`DATABASE_PUBLIC_URL`** from the target Railway Postgres service (**Connect** or **Variables**). Use the full URI (`postgresql://…`). Railway’s private `DATABASE_URL` (`*.railway.internal`) only works inside the Railway network, not from an external client.
+- Application services **stopped or scaled down** so nothing writes to the database during restore.
+
+### Restoration procedure
+
+1. In Railway, stop services that connect to the target Postgres instance.
+2. Copy **`DATABASE_PUBLIC_URL`** for the database you are restoring into.
+3. Download the chosen `.sql.gz` backup from R2 (e.g. `backup.sql.gz` in your working directory).
+4. Verify connectivity, then restore:
+
+   ```bash
+   export DATABASE_PUBLIC_URL='postgresql://…'   # full URI from Railway
+   psql "$DATABASE_PUBLIC_URL" -c 'SELECT 1;'
+   gunzip -c backup.sql.gz | psql "$DATABASE_PUBLIC_URL"
+   ```
+
+5. Wait for the command to finish. Review output for `ERROR:` lines.
+6. Confirm schema and data (e.g. `\dt`, row counts on critical tables), then redeploy or start application services and run a smoke test.
+
+Dumps are created with `pg_dump --no-owner --no-acl`; objects are owned by the restoring role (typically Railway’s `postgres` user).
+
+### New Postgres service
+
+If you provision a **new** Railway Postgres service instead of reusing the old one:
+
+1. Copy **`DATABASE_PUBLIC_URL`** from the **new** service.
+2. Update **`DATABASE_URL`** (and any related references) on every service that should use the new database—including this backup cron job.
+3. Run the **Restoration procedure** above against the new instance.
+
+### Connection troubleshooting
+
+| Symptom | Likely cause |
+|--------|----------------|
+| `could not translate host name "*.railway.internal"` | Using private `DATABASE_URL` from outside Railway; switch to **`DATABASE_PUBLIC_URL`**. |
+| `role "<local username>" does not exist` / local socket errors | Connection URI missing or incomplete; ensure the env var is the full `postgresql://…` string, not host:port alone. |
+
+### Manual on-demand backup (optional)
+
+To capture a backup outside the cron schedule:
 
 ```bash
-# download from R2, then:
-gunzip -c backup.sql.gz | psql "$DATABASE_URL"
+export DATABASE_PUBLIC_URL='postgresql://…'
+pg_dump --no-owner --no-acl "$DATABASE_PUBLIC_URL" | gzip > backup-manual-$(date -u +%Y%m%d).sql.gz
 ```
 
 ## Cron time
